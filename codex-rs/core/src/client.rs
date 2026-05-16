@@ -468,7 +468,6 @@ impl ModelClient {
             tools,
             parallel_tool_calls,
             reasoning,
-            service_tier,
             prompt_cache_key,
             text,
             ..
@@ -480,7 +479,7 @@ impl ModelClient {
             tools,
             parallel_tool_calls,
             reasoning,
-            service_tier: service_tier.as_deref(),
+            service_tier: None,
             prompt_cache_key: prompt_cache_key.as_deref(),
             text,
         };
