@@ -775,9 +775,9 @@ async fn remote_manual_compact_chatgpt_auth_reuses_service_tier_and_prompt_cache
     assert_remote_manual_compact_request_parity(
         CodexAuth::create_dummy_chatgpt_auth_for_testing(),
         Some(ServiceTier::Fast),
-        Some("priority"),
+        /*expected_service_tier*/ None,
         "remote_manual_compact_chatgpt_auth_service_tier_prompt_cache_key_request_diff",
-        "After five varied ChatGPT-auth turns, remote manual compaction reuses service_tier and prompt_cache_key while omitting responses-only fields.",
+        "After five varied ChatGPT-auth turns, remote manual compaction omits service_tier, reuses prompt_cache_key, and still omits responses-only fields.",
     )
     .await?;
 
