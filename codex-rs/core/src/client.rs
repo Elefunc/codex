@@ -485,6 +485,7 @@ impl ModelClient {
             settings.summary,
             settings.service_tier,
         )?;
+        let omit_service_tier = client_setup.api_provider.is_azure_responses_endpoint();
         let ResponsesApiRequest {
             model,
             instructions,
@@ -492,6 +493,7 @@ impl ModelClient {
             tools,
             parallel_tool_calls,
             reasoning,
+            service_tier,
             prompt_cache_key,
             text,
             ..
@@ -503,7 +505,11 @@ impl ModelClient {
             tools,
             parallel_tool_calls,
             reasoning,
-            service_tier: None,
+            service_tier: if omit_service_tier {
+                None
+            } else {
+                service_tier.as_deref()
+            },
             prompt_cache_key: prompt_cache_key.as_deref(),
             text,
         };

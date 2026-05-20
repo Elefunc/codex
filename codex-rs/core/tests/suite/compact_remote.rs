@@ -510,19 +510,32 @@ async fn remote_compact_replaces_history_for_followups() -> Result<()> {
     Ok(())
 }
 
+#[derive(Clone, Copy)]
+enum CompactProviderKind {
+    Default,
+    Azure,
+}
+
 async fn assert_remote_manual_compact_request_parity(
     auth: CodexAuth,
+    provider_kind: CompactProviderKind,
     configured_service_tier: Option<ServiceTier>,
     expected_service_tier: Option<&str>,
     snapshot_name: &str,
     scenario: &str,
 ) -> Result<()> {
-    let mut builder = test_codex().with_auth(auth);
-    if let Some(service_tier) = configured_service_tier {
-        builder = builder.with_config(move |config| {
+    let builder = test_codex().with_auth(auth).with_config(move |config| {
+        if let Some(service_tier) = configured_service_tier {
             config.service_tier = Some(service_tier.request_value().to_string());
-        });
-    }
+        }
+        match provider_kind {
+            CompactProviderKind::Default => {}
+            CompactProviderKind::Azure => {
+                config.model_provider.name = "azure".to_string();
+                config.model_provider_id = "azure".to_string();
+            }
+        }
+    });
     let harness = TestCodexHarness::with_builder(builder).await?;
     let codex = harness.test().codex.clone();
     let image_url =
@@ -757,6 +770,7 @@ async fn remote_manual_compact_api_auth_omits_service_tier_and_reuses_prompt_cac
 
     assert_remote_manual_compact_request_parity(
         CodexAuth::from_api_key("dummy"),
+        CompactProviderKind::Default,
         Some(ServiceTier::Fast),
         /*expected_service_tier*/ None,
         "remote_manual_compact_api_auth_prompt_cache_key_request_diff",
@@ -774,10 +788,29 @@ async fn remote_manual_compact_chatgpt_auth_reuses_service_tier_and_prompt_cache
 
     assert_remote_manual_compact_request_parity(
         CodexAuth::create_dummy_chatgpt_auth_for_testing(),
+        CompactProviderKind::Default,
+        Some(ServiceTier::Fast),
+        Some("priority"),
+        "remote_manual_compact_chatgpt_auth_service_tier_prompt_cache_key_request_diff",
+        "After five varied ChatGPT-auth turns, remote manual compaction reuses service_tier and prompt_cache_key while omitting responses-only fields.",
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn remote_manual_compact_azure_chatgpt_auth_omits_service_tier_and_reuses_prompt_cache_key()
+-> Result<()> {
+    skip_if_no_network!(Ok(()));
+
+    assert_remote_manual_compact_request_parity(
+        CodexAuth::create_dummy_chatgpt_auth_for_testing(),
+        CompactProviderKind::Azure,
         Some(ServiceTier::Fast),
         /*expected_service_tier*/ None,
-        "remote_manual_compact_chatgpt_auth_service_tier_prompt_cache_key_request_diff",
-        "After five varied ChatGPT-auth turns, remote manual compaction omits service_tier, reuses prompt_cache_key, and still omits responses-only fields.",
+        "remote_manual_compact_azure_chatgpt_auth_service_tier_prompt_cache_key_request_diff",
+        "After five varied Azure ChatGPT-auth turns, remote manual compaction omits service_tier, reuses prompt_cache_key, and still omits responses-only fields.",
     )
     .await?;
 
